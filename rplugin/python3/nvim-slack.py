@@ -15,11 +15,11 @@ class NeoSlack(object):
 
     @neovim.command("SlackChannels")
     def slack_channels(self):
-        self.nvim.command('new /tmp/slack_channels')
+        buff_name = '/tmp/slack_channels'
+        self.nvim.command('new {}'.format(buff_name))
         self.nvim.command('view')
-        buff = self._get_buffer('/tmp/slack_channels')
-
+        buff = self._get_buffer(buff_name)
         channels = self.sc.api_call("channels.list")['channels']
-        channels = [ch['name'] for ch in channels]
         for channel in channels:
-            buff.append(channel)
+            for line in json.dumps(channel, indent=2):
+                buff.append(line)
