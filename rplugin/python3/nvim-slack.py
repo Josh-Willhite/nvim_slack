@@ -14,4 +14,4 @@ class NeoSlack(object):
     def slack_channels(self):
         channels = self.sc.api_call("channels.list")['channels']
         channels = [ch['name'] for ch in channels]
-        self.nvim.current.line = json.dumps(channels, indent=2)
+        self.nvim.current.line = channels
