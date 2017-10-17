@@ -12,6 +12,6 @@ class NeoSlack(object):
 
     @neovim.command("SlackChannels")
     def slack_channels(self):
-        channels = sc.api_call("channels.list")['channels']
+        channels = self.sc.api_call("channels.list")['channels']
         channels = [ch['name'] for ch in channels if ch['id'] == channel_id]
         self.nvim.current.line = json.dumps(channels, indent=2)
