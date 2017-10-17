@@ -21,5 +21,4 @@ class NeoSlack(object):
         buff = self._get_buffer(buff_name)
         channels = self.sc.api_call("channels.list")['channels']
         for channel in channels:
-            for line in json.dumps(channel, indent=2):
-                buff.append(line.strip())
+            buff.append(str(channel))
