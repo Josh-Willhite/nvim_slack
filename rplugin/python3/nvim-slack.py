@@ -18,7 +18,7 @@ class NeoSlack(object):
         channels = self.sc.api_call("channels.list")['channels']
         users = self.sc.api_call("users.list")["members"]
         users = {u['id']:u['real_name'] for u in users}
-        return = {
+        return  {
             channel['name']: {'members':[users[m] for m in channel['members']]}
             for channel in channels
         }
