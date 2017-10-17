@@ -11,7 +11,7 @@ class NeoSlack(object):
         self.sc = SlackClient(os.environ['SLACK_TOKEN'])
 
     def _get_buffer(self, buffer_name):
-        return [b for b in nvim.buffers if b.name == buffer_name][0]
+        return [b for b in self.nvim.buffers if b.name == buffer_name][0]
 
     @neovim.command("SlackChannels")
     def slack_channels(self):
