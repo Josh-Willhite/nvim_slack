@@ -15,8 +15,8 @@ class NeoSlack(object):
 
     @neovim.command("SlackChannels")
     def slack_channels(self):
-        nvim.command('new /tmp/slack_channels')
-        nvim.command('view')
+        self.nvim.command('new /tmp/slack_channels')
+        self.nvim.command('view')
         buff = self._get_buffer('/tmp/slack_channels')
 
         channels = self.sc.api_call("channels.list")['channels']
