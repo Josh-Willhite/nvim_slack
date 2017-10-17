@@ -22,4 +22,4 @@ class NeoSlack(object):
         channels = self.sc.api_call("channels.list")['channels']
         for channel in channels:
             for line in json.dumps(channel, indent=2):
-                buff.append(line)
+                buff.append(line.strip())
