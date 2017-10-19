@@ -16,7 +16,6 @@ class NeoSlack(object):
         self.sc = SlackClient(os.environ['SLACK_TOKEN'])
         self.channels = self.sc.api_call("channels.list")['channels']
         self.users = self.sc.api_call("users.list")["members"]
-        self.start_stream_thread()
 
     def get_buffer(self, buffer_name):
         return [b for b in self.nvim.buffers if b.name == buffer_name][0]
@@ -38,6 +37,7 @@ class NeoSlack(object):
                         json.dump(slack_events, slack_file, indent=2)
                 sleep(1)
 
+    @neovim.command("SlackStream")
     def start_stream_thread(self):
         t = threading.Thread(target=self.process_slack_stream)
         t.daemon = True
