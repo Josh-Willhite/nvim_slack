@@ -1,7 +1,7 @@
 from datetime import datetime
 import json
 import threading
-fromt time import sleep
+from time import sleep
 
 import neovim
 from slackclient import SlackClient
