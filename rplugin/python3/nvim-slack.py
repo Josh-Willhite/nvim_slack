@@ -23,8 +23,8 @@ class NeoSlack(object):
             for channel in channels
         }
 
-    @neovim.command("SlackChannels")
-    def slack_channels(self):
+    @neovim.command("SlackSummary")
+    def slack_summary(self):
         buff_name = '/tmp/slack_channels'
         self.nvim.command('new {}'.format(buff_name))
         self.nvim.command('view')
