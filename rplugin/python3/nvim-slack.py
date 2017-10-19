@@ -39,7 +39,7 @@ class NeoSlack(object):
                 sleep(1)
 
     def start_stream_thread(self):
-        t = threading.Thread(target=process_slack_stream)
+        t = threading.Thread(target=self.process_slack_stream)
         t.daemon = True
         t.start()
 
