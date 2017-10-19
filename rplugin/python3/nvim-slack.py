@@ -1,4 +1,5 @@
 from datetime import datetime
+import logging
 import json
 import os
 import threading
@@ -8,10 +9,12 @@ import neovim
 from slackclient import SlackClient
 
 SLACK_LOG = '/tmp/slack.log'
+logging.basicConfig(filename='/tmp/slack-plugin.log',level=logging.DEBUG)
 
 @neovim.plugin
 class NeoSlack(object):
     def __init__(self, nvim):
+        logging.info('initializing class')
         self.nvim = nvim
         self.sc = SlackClient(os.environ['SLACK_TOKEN'])
         self.channels = self.sc.api_call("channels.list")['channels']
@@ -21,16 +24,20 @@ class NeoSlack(object):
         return [b for b in self.nvim.buffers if b.name == buffer_name][0]
 
     def get_channel_name(self, channel_id):
+        logging.info('getting channels')
         return [ch['name'] for ch in self.channels if ch['id'] == channel_id][0]
 
     def get_user_name(self, user_id):
+        logging.info('getting users')
         return [us['name'] for us in self.users if us['id'] == user_id][0]
 
     def process_slack_stream(self):
         if self.sc.rtm_connect():
             while True:
+                logging.info('processing stream')
                 events = self.sc.rtm_read()
                 if events:
+                    logging.info('processing events')
                     with open(SLACK_LOG, 'w') as slack_file:
                         slack_events = json.load(slack_file)
                         slack_events += events
