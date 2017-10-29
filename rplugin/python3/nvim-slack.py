@@ -77,7 +77,7 @@ class NeoSlack(object):
             sleep(0.25)
 
     @neovim.command("SlackChannel", channel='')
-    def start_channel_thread(self, channel)
+    def start_channel_thread(self, channel):
         buff_name = '/tmp/slack_{}'.format(channel)
         self.nvim.command('new {}'.format(buff_name))
         self.nvim.command('view')
