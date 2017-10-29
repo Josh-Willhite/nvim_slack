@@ -76,7 +76,7 @@ class NeoSlack(object):
                     most_recent_ts = ts
             sleep(0.25)
 
-    @neovim.command("SlackChannel", channel='')
+    @neovim.command("SlackChannel", channel='', nargs='*')
     def start_channel_thread(self, channel):
         buff_name = '/tmp/slack_{}'.format(channel)
         self.nvim.command('new {}'.format(buff_name))
