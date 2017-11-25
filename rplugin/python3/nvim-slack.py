@@ -11,6 +11,10 @@ from slackclient import SlackClient
 SLACK_LOG = '/tmp/slack.log'
 logging.basicConfig(filename='/tmp/slack-plugin.log',level=logging.DEBUG)
 
+def ltf(msg):
+    with open('/tmp/ltf.log', 'a') as f:
+        f.write('{}: {}'.format(datetime.now(), msg + '\n'))
+
 @neovim.plugin
 class NeoSlack(object):
     def __init__(self, nvim):
@@ -19,6 +23,7 @@ class NeoSlack(object):
         self.sc = SlackClient(os.environ['SLACK_TOKEN'])
         self.channels = self.sc.api_call("channels.list")['channels']
         self.users = self.sc.api_call("users.list")["members"]
+        self.channel_buffers = {}
 
     def get_buffer(self, buffer_name):
         return [b for b in self.nvim.buffers if b.name == buffer_name][0]
@@ -28,63 +33,47 @@ class NeoSlack(object):
         return [ch['name'] for ch in self.channels if ch['id'] == channel_id][0]
 
     def get_channel_id(self, channel_name):
+        ltf('getting channel: {}'.format(channel_name))
         return [ch['id'] for ch in self.channels if ch['name'] == channel_name][0]
 
     def get_user_name(self, user_id):
         logging.info('getting users')
         return [us['name'] for us in self.users if us['id'] == user_id][0]
 
-    def process_slack_stream(self):
-        if self.sc.rtm_connect():
-            if not os.path.isfile(SLACK_EVENTS):
-                with open(SLACK_EVENTS, 'w') as slack_file:
-                    slack_file.write('')
-            while True:
-                events = self.sc.rtm_read()
-                if events:
-                    with open(SLACK_EVENTS, 'a') as slack_file:
-                        for event in events:
-                            if event['type'] in ['message']:
-                                json.dump(event, slack_file)
-                                slack_file.write('\n')
-                sleep(0.5)
+    def create_channel_buffers(self):
+        ltf('Creating buffers')
+        for channel in self.channels:
+            ltf('Creating buffer for {}'.format(channel))
+            channel = self.get_channel_name(channel['id'])
+            buff_name = '/tmp/slack_{}'.format(channel)
+            self.nvim.command('new {}'.format(buff_name))
+            self.nvim.command('view')
+            self.channel_buffers[channel] = self.get_buffer(buff_name)
+            ltf('Created {} buffer.'.format(channel))
+
+    def write_event_to_buffer(self, event):
+        ts = datetime.fromtimestamp(float(event['ts']))
+        ts_out = datetime.strftime(ts, '%H:%M:%S')
+        channel = self.get_channel_name(event['channel'])
+        msg = '{} [{}]({}): {}'.format(
+                ts_out,
+                channel,
+                self.get_user_name(event['user']),
+                event['text']
+            )
+        ltf('{}: writing {} to {}'.format(datetime.now(), msg, channel))
+        self.channel_buffers[channel].append(msg)
 
     @neovim.command("SlackStream")
-    def start_stream_thread(self):
-        t = threading.Thread(target=self.process_slack_stream)
-        t.daemon = True
-        t.start()
-
-    def stream_channel_thread(self, channel, buff):
-        most_recent_ts = datetime.now() - timedelta(minutes=30)
-        while True:
-            with open(SLACK_EVENTS, 'r') as slack_file:
-                events = slack_file.readlines()
-            for event in events:
-                event = json.loads(event)
-                ts = datetime.fromtimestamp(float(event['ts']))
-                ts_out = datetime.strftime(ts, '%H:%M:%S')
-                if event['channel'] == channel and ts > most_recent_ts:
-                    buff.append(
-                        '{} [{}]({}): {}\n'.format(
-                            ts_out,
-                            self.get_channel_name(event['channel']),
-                            self.get_user_name(event['user']),
-                            event['text']
-                        )
-                    )
-                    most_recent_ts = ts
-            sleep(0.25)
-
-    @neovim.command("SlackChannel", channel='', nargs='*')
-    def start_channel_thread(self, channel):
-        buff_name = '/tmp/slack_{}'.format(channel)
-        self.nvim.command('new {}'.format(buff_name))
-        self.nvim.command('view')
-        buff = self.get_buffer(buff_name)
-        channel_id = self.get_channel_id(channel)
-        t = threading.Thread(target=self.stream_channel_thread, args=(channel_id, buff,))
-        t.start()
+    def process_slack_stream(self):
+        ltf('{}: processing stream'.format(datetime.now()))
+        self.create_channel_buffers()
+        if self.sc.rtm_connect():
+            while True:
+                for event in self.sc.rtm_read():
+                    if event['type'] in ['message']:
+                        self.write_event_to_buffer(event)
+                sleep(0.5)
 
     def get_summary(self):
         users = {u['id']:u['real_name'] for u in self.users}
@@ -95,6 +84,7 @@ class NeoSlack(object):
 
     @neovim.command("SlackSummary")
     def slack_summary(self):
+        ltf('SUMMARY')
         buff_name = '/tmp/slack_channels'
         self.nvim.command('new {}'.format(buff_name))
         self.nvim.command('view')
