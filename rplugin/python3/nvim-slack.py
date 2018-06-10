@@ -3,6 +3,7 @@ import logging
 import json
 import os
 import threading
+import multiprocessing
 from time import sleep
 
 import neovim
@@ -26,10 +27,11 @@ class NeoSlack(object):
         self.channel_buffers = {}
 
     def get_buffer(self, buffer_name):
+        ltf('get buffer')
         return [b for b in self.nvim.buffers if b.name == buffer_name][0]
 
     def get_channel_name(self, channel_id):
-        logging.info('getting channels')
+        logging.info('getting channel: {}'.format(channel_id))
         return [ch['name'] for ch in self.channels if ch['id'] == channel_id][0]
 
     def get_channel_id(self, channel_name):
@@ -50,30 +52,60 @@ class NeoSlack(object):
             self.nvim.command('view')
             self.channel_buffers[channel] = self.get_buffer(buff_name)
             ltf('Created {} buffer.'.format(channel))
+        buff_name = '/tmp/slack_log'
+        self.nvim.command('new {}'.format(buff_name))
+        self.channel_buffers['slack_log'] = self.get_buffer(buff_name)
 
     def write_event_to_buffer(self, event):
+        ltf('writing event: {}'.format(event))
         ts = datetime.fromtimestamp(float(event['ts']))
         ts_out = datetime.strftime(ts, '%H:%M:%S')
         channel = self.get_channel_name(event['channel'])
+        if 'user' in event:
+            username = self.get_user_name(event['user'])
+        else:
+            username = event['username']
         msg = '{} [{}]({}): {}'.format(
                 ts_out,
                 channel,
-                self.get_user_name(event['user']),
+                username,
                 event['text']
             )
         ltf('{}: writing {} to {}'.format(datetime.now(), msg, channel))
         self.channel_buffers[channel].append(msg)
+        ltf('done writing event')
 
-    @neovim.command("SlackStream")
-    def process_slack_stream(self):
-        ltf('{}: processing stream'.format(datetime.now()))
-        self.create_channel_buffers()
+    @neovim.command("SlackComment", range='', nargs='*', allow_nested=True)
+    def comment(self, args, range):
+        ltf('range: {} args: {}'.format(range, args))
+        channel_name = args[0]
+        comment = ' '.join(args[1:])
+        self.sc.api_call(
+            "chat.postMessage",
+            channel="#{}".format(channel_name),
+            text=comment
+        )
+
+    def process_slack_stream(self, allow_nested=True):
         if self.sc.rtm_connect():
             while True:
+                print('no op')
                 for event in self.sc.rtm_read():
                     if event['type'] in ['message']:
                         self.write_event_to_buffer(event)
-                sleep(0.5)
+                for buff in self.channel_buffers:
+                    self.nvim.command(
+                self.channel_buffers['slack_log'].append('0')
+                sleep(.25)
+
+    @neovim.command("SlackStream")
+    def slack_stream(self):
+        ltf('{}: processing stream'.format(datetime.now()))
+        self.create_channel_buffers()
+        self.process_slack_stream()
+        p = multiprocessing.Process(target=self.process_slack_stream)
+        jobs.append(p)
+        p.start()
 
     def get_summary(self):
         users = {u['id']:u['real_name'] for u in self.users}
@@ -91,4 +123,3 @@ class NeoSlack(object):
         buff = self.get_buffer(buff_name)
         for line in json.dumps(self.get_summary(), indent=2).split('\n'):
             buff.append(line)
-
